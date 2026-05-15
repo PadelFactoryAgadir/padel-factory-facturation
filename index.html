@@ -279,10 +279,10 @@ label.lbl{font-size:12px;color:var(--g500);display:block;margin-bottom:5px;font-
       <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--g200)">
         <h4 style="font-size:13px;font-weight:700;color:var(--g500);margin-bottom:12px">Format numérotation</h4>
         <div class="g2">
-          <div><label class="lbl">Factures</label><input class="inp" id="s-ff" placeholder="{NN}/{YY}"/><div style="font-size:11px;color:var(--blue);margin-top:4px;font-family:monospace" id="s-ff-prev"></div></div>
-          <div><label class="lbl">Devis</label><input class="inp" id="s-fd" placeholder="DEV-{YYYY}-{NNN}"/><div style="font-size:11px;color:var(--blue);margin-top:4px;font-family:monospace" id="s-fd-prev"></div></div>
+          <div><label class="lbl">Factures</label><input class="inp" id="s-ff" placeholder="{NNN}-{MM}-{YY}"/><div style="font-size:11px;color:var(--blue);margin-top:4px;font-family:monospace" id="s-ff-prev"></div></div>
+          <div><label class="lbl">Devis</label><input class="inp" id="s-fd" placeholder="DEV-{NNN}-{MM}-{YY}"/><div style="font-size:11px;color:var(--blue);margin-top:4px;font-family:monospace" id="s-fd-prev"></div></div>
         </div>
-        <div style="font-size:11px;color:var(--g400);margin-top:6px">{NNN}=numéro 3 chiffres &nbsp;{NN}=2 chiffres &nbsp;{YYYY}=année &nbsp;{YY}=année courte</div>
+        <div style="font-size:11px;color:var(--g400);margin-top:6px">{NNN}=numéro 3 chiffres &nbsp;{NN}=2 chiffres &nbsp;{MM}=mois &nbsp;{YY}=année courte (ex&nbsp;: 26)</div>
       </div>
       <button class="btn btn-primary" style="margin-top:20px;font-size:14px;padding:11px 28px" onclick="saveSoc()">💾 Enregistrer</button>
     </div>
@@ -415,7 +415,7 @@ let docs      = LS.g('pf_docs')      || [];
 let clients   = LS.g('pf_clients')   || [];
 let cat       = LS.g('pf_cat')       || [];
 let ribs      = LS.g('pf_ribs')      || [{id:'r1',label:'Compte principal MAD',rib:'011 010 0000082100020916 41',iban:'MA64 0110 1000 0008 2100 0209 1641',bic:'BMCEMAMC',banque:'BMCE Bank',isDefault:true}];
-let soc       = LS.g('pf_soc')       || {nom:'BENZ & SPORT S.A.R.L',forme:'S.A.R.L',capital:'100.000',adresse:'Rue Ibn Arabi Lot C Quartier Industriel',ville:'Agadir 80000',tel:'06.33.80.99.81',email:'benzsportsarl@gmail.com',ice:'003016623000042',rc:'51061',patente:'48106885',if_:'51848405',cnss:'',ff:'{NN}/{YY}',fd:'DEV-{YYYY}-{NNN}'};
+let soc       = LS.g('pf_soc')       || {nom:'BENZ & SPORT S.A.R.L',forme:'S.A.R.L',capital:'100.000',adresse:'Rue Ibn Arabi Lot C Quartier Industriel',ville:'Agadir 80000',tel:'06.33.80.99.81',email:'benzsportsarl@gmail.com',ice:'003016623000042',rc:'51061',patente:'48106885',if_:'51848405',cnss:'',ff:'{NNN}-{MM}-{YY}',fd:'DEV-{NNN}-{MM}-{YY}'};
 let numD=LS.g('pf_nd')||1, numF=LS.g('pf_nf')||1;
 let curTab='tous', editDoc=null, editCliId=null, editCatId=null, editRibId=null;
 let dbSel=new Set(), dbExp=null, pendingOk=null;
@@ -447,7 +447,17 @@ function calc(doc){
   return{lignes:ls,totalHT:ht,totalTVA:tv,totalTTC:ht+tv,tvaGroups:tg};
 }
 
-function buildNum(fmt,n){const y=new Date().getFullYear();return(fmt||'{NN}/{YY}').replace('{YYYY}',y).replace('{YY}',String(y).slice(2)).replace('{NNN}',String(n).padStart(3,'0')).replace('{NN}',String(n).padStart(2,'0'));}
+function buildNum(fmt,n){
+  var now=new Date();
+  var y=now.getFullYear();
+  var mm=String(now.getMonth()+1).padStart(2,'0');
+  return(fmt||'{NNN}-{MM}-{YY}')
+    .replace('{YYYY}',y)
+    .replace('{YY}',String(y).slice(2))
+    .replace('{MM}',mm)
+    .replace('{NNN}',String(n).padStart(3,'0'))
+    .replace('{NN}',String(n).padStart(2,'0'));
+}
 
 function nl(n,dev){
   const u=['','un','deux','trois','quatre','cinq','six','sept','huit','neuf','dix','onze','douze','treize','quatorze','quinze','seize','dix-sept','dix-huit','dix-neuf'];
@@ -610,11 +620,11 @@ function renderSoc(){
 }
 function updNumPrev(){
   const ff=document.getElementById('s-ff').value;const fd=document.getElementById('s-fd').value;
-  document.getElementById('s-ff-prev').textContent='→ '+buildNum(ff||'{NN}/{YY}',numF);
-  document.getElementById('s-fd-prev').textContent='→ '+buildNum(fd||'DEV-{YYYY}-{NNN}',numD);
+  document.getElementById('s-ff-prev').textContent='→ '+buildNum(ff||'{NNN}-{MM}-{YY}',numF);
+  document.getElementById('s-fd-prev').textContent='→ '+buildNum(fd||'DEV-{NNN}-{MM}-{YY}',numD);
 }
 function saveSoc(){
-  soc={nom:document.getElementById('s-nom').value,forme:document.getElementById('s-forme').value,capital:document.getElementById('s-capital').value,tel:document.getElementById('s-tel').value,email:document.getElementById('s-email').value,ice:document.getElementById('s-ice').value,rc:document.getElementById('s-rc').value,patente:document.getElementById('s-patente').value,if_:document.getElementById('s-if').value,cnss:document.getElementById('s-cnss').value,adresse:document.getElementById('s-adresse').value,ville:document.getElementById('s-ville').value,ff:document.getElementById('s-ff').value||'{NN}/{YY}',fd:document.getElementById('s-fd').value||'DEV-{YYYY}-{NNN}'};
+  soc={nom:document.getElementById('s-nom').value,forme:document.getElementById('s-forme').value,capital:document.getElementById('s-capital').value,tel:document.getElementById('s-tel').value,email:document.getElementById('s-email').value,ice:document.getElementById('s-ice').value,rc:document.getElementById('s-rc').value,patente:document.getElementById('s-patente').value,if_:document.getElementById('s-if').value,cnss:document.getElementById('s-cnss').value,adresse:document.getElementById('s-adresse').value,ville:document.getElementById('s-ville').value,ff:document.getElementById('s-ff').value||'{NNN}-{MM}-{YY}',fd:document.getElementById('s-fd').value||'DEV-{NNN}-{MM}-{YY}'};
   persist();toast('Société enregistrée ✓');
 }
 
@@ -639,7 +649,7 @@ function renderEdit(){
   document.getElementById('btn-ap').style.display=lk?'none':'inline-block';
   document.getElementById('btn-sv').style.display=lk?'none':'inline-block';
   document.getElementById('e-ech-lbl').textContent=d.type==='facture'?'Échéance':"Valide jusqu'au";
-  const en=document.getElementById('e-num');en.value=d.numero;en.disabled=lk;en.onchange=e=>editDoc.numero=e.target.value;
+  const en=document.getElementById('e-num');en.value=d.numero;en.disabled=lk;en.oninput=e=>editDoc.numero=e.target.value;en.onchange=e=>editDoc.numero=e.target.value;
   const eo=document.getElementById('e-objet');eo.value=d.objet||'';eo.disabled=lk;eo.oninput=e=>editDoc.objet=e.target.value;
   const el=document.getElementById('e-langue');el.value=d.langue||'fr';el.disabled=lk;el.onchange=e=>editDoc.langue=e.target.value;
   const edv=document.getElementById('e-devise');edv.value=d.devise||'MAD';edv.disabled=lk;edv.onchange=e=>{editDoc.devise=e.target.value;renderLignes();};
@@ -676,10 +686,12 @@ function renderLignes(){
   });
 }
 function setLF(id,k,v){
+  if(!editDoc)return;
   editDoc.lignes=editDoc.lignes.map(l=>l.id===id?{...l,[k]:v}:l);
   updateTotals(); // Only update totals, not re-render whole lignes
 }
 function updateTotals(){
+  if(!editDoc)return;
   var d=editDoc,dv=d.devise||'MAD';
   var res=calc(d);
   var totalHT=res.totalHT,totalTTC=res.totalTTC,tvaGroups=res.tvaGroups;
@@ -698,10 +710,20 @@ function addLigne(){editDoc.lignes.push({id:nid(),designation:'',qte:1,pu:'',tva
 function delLigne(id){if(editDoc.lignes.length<=1)return;editDoc.lignes=editDoc.lignes.filter(l=>l.id!==id);renderLignes();}
 
 function saveDoc(){
-  syncOpts();const d=editDoc;const ex=docs.find(x=>x.id===d.id);
-  if(ex)docs=docs.map(x=>x.id===d.id?d:x);
-  else{docs.push(d);if(d.type==='devis')numD++;else numF++;}
-  persist();toast('Enregistré ✓');go('docs');
+  try{
+    syncOpts();
+    var d=editDoc;
+    if(!d){toast('Erreur : aucun document en cours',false);return;}
+    var ex=docs.find(function(x){return x.id===d.id;});
+    if(ex){docs=docs.map(function(x){return x.id===d.id?d:x;});}
+    else{docs.push(d);if(d.type==='devis')numD++;else numF++;}
+    persist();
+    toast('Enregistré ✓');
+    go('docs');
+  }catch(e){
+    toast('Erreur enregistrement: '+e.message,false);
+    console.error(e);
+  }
 }
 function previewCur(){
   syncOpts();const d=editDoc;
