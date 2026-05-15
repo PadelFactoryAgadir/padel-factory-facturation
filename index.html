@@ -419,7 +419,10 @@ let docs      = LS.g('pf_docs')      || [];
 let clients   = LS.g('pf_clients')   || [];
 let cat       = LS.g('pf_cat')       || [];
 let ribs      = LS.g('pf_ribs')      || [{id:'r1',label:'Compte principal MAD',rib:'011 010 0000082100020916 41',iban:'MA64 0110 1000 0008 2100 0209 1641',bic:'BMCEMAMC',banque:'BMCE Bank',isDefault:true}];
-let soc       = LS.g('pf_soc')       || {nom:'BENZ & SPORT S.A.R.L',forme:'S.A.R.L',capital:'100.000',adresse:'Rue Ibn Arabi Lot C Quartier Industriel',ville:'Agadir 80000',tel:'06.33.80.99.81',email:'benzsportsarl@gmail.com',ice:'003016623000042',rc:'51061',patente:'48106885',if_:'51848405',cnss:'',ff:'{NNN}-{MM}-{YY}',fd:'DEV-{NNN}-{MM}-{YY}'};
+let _rs=LS.g('pf_soc');
+if(_rs&&_rs.ff&&!_rs.ff.includes('{MM}'))_rs.ff='{NNN}-{MM}-{YY}';
+if(_rs&&_rs.fd&&!_rs.fd.includes('{MM}'))_rs.fd='DEV-{NNN}-{MM}-{YY}';
+let soc       = _rs || {nom:'BENZ & SPORT S.A.R.L',forme:'S.A.R.L',capital:'100.000',adresse:'Rue Ibn Arabi Lot C Quartier Industriel',ville:'Agadir 80000',tel:'06.33.80.99.81',email:'benzsportsarl@gmail.com',ice:'003016623000042',rc:'51061',patente:'48106885',if_:'51848405',cnss:'',ff:'{NNN}-{MM}-{YY}',fd:'DEV-{NNN}-{MM}-{YY}'};
 let numD=LS.g('pf_nd')||1, numF=LS.g('pf_nf')||1;
 let curTab='tous', editDoc=null, editCliId=null, editCatId=null, editRibId=null;
 let dbSel=new Set(), dbExp=null, pendingOk=null;
@@ -454,13 +457,18 @@ function calc(doc){
 function buildNum(fmt,n){
   var now=new Date();
   var y=now.getFullYear();
+  var yy=String(y).slice(2);
   var mm=String(now.getMonth()+1).padStart(2,'0');
-  return(fmt||'{NNN}-{MM}-{YY}')
-    .replace('{YYYY}',y)
-    .replace('{YY}',String(y).slice(2))
-    .replace('{MM}',mm)
-    .replace('{NNN}',String(n).padStart(3,'0'))
-    .replace('{NN}',String(n).padStart(2,'0'));
+  var nnn=String(n).padStart(3,'0');
+  var nn=String(n).padStart(2,'0');
+  // Replace all tokens - order matters: longer tokens first
+  var result=(fmt||'{NNN}-{MM}-{YY}');
+  result=result.replace(/\{YYYY\}/g,y);
+  result=result.replace(/\{NNN\}/g,nnn);
+  result=result.replace(/\{MM\}/g,mm);
+  result=result.replace(/\{YY\}/g,yy);
+  result=result.replace(/\{NN\}/g,nn);
+  return result;
 }
 
 function nl(n,dev){
