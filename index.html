@@ -6,6 +6,7 @@
 <title>Padel Factory — Facturation</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@page{margin:0;size:A4}
 :root{
   --blue:#1a6ef5; --blue-dark:#0a1f5e; --blue-deep:#061240; --blue-mid:#1550c0;
   --blue-light:#e8f0fe; --green:#c8e600; --green-dark:#a0b800;
@@ -87,7 +88,8 @@ label.lbl{font-size:12px;color:var(--g500);display:block;margin-bottom:5px;font-
 .cb{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--g500);margin-top:9px}
 .cb input{width:16px;height:16px;cursor:pointer;accent-color:var(--blue)}
 @media print{
-  html,body{background:#fff!important;background-color:#fff!important;color:#111!important}
+  @page{margin:0;size:A4}
+  html,body{background:#fff!important;background-color:#fff!important;color:#111!important;margin:0;padding:0}
   body>*{display:none!important;visibility:hidden!important}
   #pf{display:block!important;visibility:visible!important;position:fixed!important;top:0!important;left:0!important;width:100%!important;background:#fff!important;background-color:#fff!important;margin:0!important;padding:0!important}
   #pf *{visibility:visible!important;color:inherit}
@@ -95,6 +97,8 @@ label.lbl{font-size:12px;color:var(--g500);display:block;margin-bottom:5px;font-
 }
 #pf{display:none}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 <div id="toast"></div>
@@ -246,7 +250,7 @@ label.lbl{font-size:12px;color:var(--g500);display:block;margin-bottom:5px;font-
     <h3 style="margin-bottom:16px;color:var(--blue);font-weight:700" id="cli-form-title">Nouveau client</h3>
     <div class="g2">
       <div><label class="lbl">Raison sociale *</label><input class="inp" id="cf-rs" placeholder="Ex: AGROSEM SARL"/></div>
-      <div><label class="lbl">I.C.E</label><input class="inp" id="cf-ice" placeholder="Ex: 001552035000025"/></div>
+      <div><label class="lbl">I.C.E <span style="color:var(--red)">*</span></label><input class="inp" id="cf-ice" placeholder="Ex: 001552035000025"/></div>
     </div>
     <div style="display:flex;gap:10px;margin-top:14px">
       <button class="btn btn-primary" onclick="saveCli()">Enregistrer</button>
@@ -515,6 +519,8 @@ function renderDocs(){
     a+=`<button class="btn btn-secondary" style="padding:5px 9px;font-size:12px" onclick="dupeDoc('${d.id}')">⧉</button>`;
     if(d.type==='facture'&&!d.figee)a+=`<button class="btn btn-purple" style="padding:5px 9px;font-size:12px" onclick="figerDoc('${d.id}')">🔒</button>`;
     a+=`<button class="btn btn-blue" style="padding:5px 9px;font-size:12px" onclick="sendMail('${d.id}')">✉️</button>`;
+    a+=`<button class="btn btn-primary" style="padding:5px 9px;font-size:12px" onclick="downloadPDF('${d.id}')" title="Télécharger PDF">⬇️</button>`;
+    a+=`<button class="btn btn-secondary" style="padding:5px 9px;font-size:12px" onclick="printDoc('${d.id}')" title="Imprimer">🖨</button>`;
     a+=`<button class="btn btn-red" style="padding:5px 9px;font-size:12px" onclick="askDelDoc('${d.id}')">🗑</button>`;
     return`<tr><td><span class="mono" style="font-weight:700;color:${col}">${d.numero}</span></td><td style="color:var(--g500);font-size:12px;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${eh(d.objet||'')}</td><td style="color:var(--g500)">${d.date}</td><td style="font-weight:500">${c?eh(c.raisonSociale):'<span style="color:var(--g400)">—</span>'}</td><td><span class="badge" style="color:var(--g500);background:var(--g100);font-size:11px">${dv}</span></td><td class="mono" style="font-weight:700">${fv(totalTTC)} <span style="font-size:11px;color:var(--g400)">${dv}</span></td><td>${bdg(d.statut)}</td><td><div style="display:flex;gap:4px;flex-wrap:wrap">${a}</div></td></tr>`;
   }).join('');
@@ -588,7 +594,15 @@ function addLigneFromCat(id){const item=cat.find(c=>c.id===id);if(!item)return;e
 // ═══ CLIENTS ═══
 function showCliForm(c){editCliId=c?c.id:null;document.getElementById('cf-rs').value=c?c.raisonSociale:'';document.getElementById('cf-ice').value=c?c.ice:'';document.getElementById('cli-form-title').textContent=c?'Modifier':'Nouveau client';document.getElementById('cli-form').style.display='block';}
 function hideCliForm(){document.getElementById('cli-form').style.display='none';editCliId=null;}
-function saveCli(){const r=document.getElementById('cf-rs').value.trim();if(!r)return;const ice=document.getElementById('cf-ice').value.trim();if(editCliId)clients=clients.map(c=>c.id===editCliId?{...c,raisonSociale:r,ice}:c);else clients.push({id:nid(),raisonSociale:r,ice});persist();toast('Client enregistré ✓');hideCliForm();renderCli();}
+function saveCli(){
+  var r=document.getElementById('cf-rs').value.trim();
+  if(!r){toast('La raison sociale est obligatoire',false);return;}
+  var ice=document.getElementById('cf-ice').value.trim();
+  if(!ice){toast('L\'ICE est obligatoire',false);return;}
+  if(editCliId)clients=clients.map(c=>c.id===editCliId?{...c,raisonSociale:r,ice}:c);
+  else clients.push({id:nid(),raisonSociale:r,ice});
+  persist();toast('Client enregistré ✓');hideCliForm();renderCli();
+}
 function delCli(id){clients=clients.filter(c=>c.id!==id);persist();toast('Supprimé',false);renderCli();}
 function renderCli(){
   document.getElementById('cli-count').textContent=clients.length;
@@ -744,7 +758,7 @@ function previewDoc(id){
   if(d.type==='facture'&&d.statut==='en_attente')a+=`<button class="btn btn-green" onclick="markPaye('${d.id}')">✅ Payée</button>`;
   a+=`<button class="btn btn-blue" onclick="sendMail('${d.id}')">✉️ Comptable</button>`;
   a+=`<button class="btn btn-red" onclick="askDelDoc('${d.id}')">🗑</button>`;
-  a+=`<button class="btn btn-primary" onclick="printDoc('${d.id}')">🖨 Imprimer / PDF</button>`;
+  a+=`<button class="btn btn-blue" onclick="downloadPDF('${d.id}')">⬇️ Télécharger PDF</button><button class="btn btn-secondary" onclick="printDoc('${d.id}')">🖨 Imprimer</button>`;
   document.getElementById('pv-acts').innerHTML=a;
   document.getElementById('pv-doc').innerHTML=buildDoc(d,cli,lignes,tvaGroups,totalHT,totalTVA,totalTTC,false);
   go('preview');
@@ -763,7 +777,7 @@ function buildDoc(d,cli,lignes,tvaGroups,totalHT,totalTVA,totalTTC,forPrint){
   const mts=[s.rc&&`RC : ${s.rc}`,s.ice&&`ICE : ${s.ice}`,s.patente&&`Patente : ${s.patente}`,s.if_&&`IF : ${s.if_}`,s.cnss&&`CNSS : ${s.cnss}`].filter(Boolean).join('  —  ');
   const ribHTML=rib?`<div style="border:1.5px solid #dde5f8;border-radius:7px;padding:10px 16px;margin-bottom:14px;font-size:12px;background:#f0f5ff"><div style="font-weight:700;color:#111;margin-bottom:4px">${t.bq}${rib.banque?' — '+eh(rib.banque):''}</div><div style="color:#444;font-family:monospace;font-size:11px;line-height:1.8">${rib.rib?'RIB : '+eh(rib.rib)+'<br/>':''}${rib.iban?'IBAN : '+eh(rib.iban)+'<br/>':''}${rib.bic?'BIC : '+eh(rib.bic):''}</div></div>`:'';
   const sigHTML=o.tp!==false?`<div style="display:flex;justify-content:flex-end;margin:20px 0"><div style="min-width:220px;min-height:80px;"></div></div>`:'';
-  return`<div style="background:#ffffff;color:#111111;padding:36px 44px;border-radius:${forPrint?'0':'14px'};max-width:${forPrint?'none':'820px'};margin:0 auto;${forPrint?'':'box-shadow:0 8px 40px #1a6ef520'};font-family:Arial,Helvetica,sans-serif;font-size:13px">
+  return`<div style="background:#ffffff;color:#111111;padding:${forPrint?'20px 32px':'36px 44px'};border-radius:${forPrint?'0':'14px'};max-width:${forPrint?'none':'820px'};margin:0 auto;${forPrint?'':'box-shadow:0 8px 40px #1a6ef520'};font-family:Arial,Helvetica,sans-serif;font-size:13px">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;padding-bottom:16px;border-bottom:3px solid ${acc}">
       <div><img src="${LOGO_W}" alt="Padel Factory" style="height:56px;max-width:200px;object-fit:contain;display:block;margin-bottom:6px;${nb?'filter:grayscale(1)':''}"/><div style="font-size:15px;font-weight:800;color:#111;margin-bottom:6px;letter-spacing:.3px">${eh(s.nom)}</div><div style="font-size:11.5px;color:#555;line-height:1.9">${s.adresse?`<div>${eh(s.adresse)}</div>`:''}${s.ville?`<div>${eh(s.ville)}</div>`:''}${s.tel?`<div>Tél : ${eh(s.tel)}</div>`:''}${s.email?`<div>${eh(s.email)}</div>`:''}</div></div>
       <div style="text-align:right"><div style="font-size:28px;font-weight:900;color:${acc};text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">${isFact?t.inv:t.quo}</div><div style="font-family:monospace;font-size:15px;font-weight:700;margin-bottom:4px;color:#111">${eh(d.numero)}</div><div style="font-size:12px;color:#555">Agadir, le ${d.date}</div>${d.dateEcheance?`<div style="font-size:12px;color:#555">${isFact?t.ech:t.val} : ${d.dateEcheance}</div>`:''}${dv!=='MAD'?`<div style="font-size:12px;color:#888;margin-top:2px">Devise : ${dv}</div>`:''}</div>
@@ -880,19 +894,24 @@ function quickAddClient(){
 }
 function quickAddClientSave(){
   var rs=document.getElementById('qa-rs').value.trim();
-  if(!rs)return;
+  if(!rs){toast('La raison sociale est obligatoire',false);return;}
   var ice=document.getElementById('qa-ice').value.trim();
+  if(!ice){toast('L\'ICE est obligatoire',false);return;}
   var newCli={id:nid(),raisonSociale:rs,ice:ice};
   clients.push(newCli);
   persist();
   closeOv();
-  // Refresh client select and select the new client
-  var sel=document.getElementById('e-client');
-  var opt=document.createElement('option');
-  opt.value=newCli.id;opt.textContent=rs;
-  sel.appendChild(opt);
-  sel.value=newCli.id;
-  editDoc.clientId=newCli.id;
+  // If we're in edit view, refresh client select
+  if(editDoc){
+    var sel=document.getElementById('e-client');
+    if(sel){
+      var opt=document.createElement('option');
+      opt.value=newCli.id;opt.textContent=rs;
+      sel.appendChild(opt);
+      sel.value=newCli.id;
+      editDoc.clientId=newCli.id;
+    }
+  }
   toast('Client ajouté ✓');
 }
 function quickAddCat(){
@@ -923,6 +942,74 @@ function quickAddCatSave(){
   closeOv();
   renderLignes();
   toast('Article ajouté au catalogue et à la ligne ✓');
+}
+
+// ═══ PDF DOWNLOAD ═══
+function downloadPDF(id){
+  var d=docs.find(function(x){return x.id===id;});
+  if(!d)return;
+  var cli=getCli(d.clientId);
+  var res=calc(d);
+  var container=document.getElementById('pf');
+  container.innerHTML=buildDoc(d,cli,res.lignes,res.tvaGroups,res.totalHT,res.totalTVA,res.totalTTC,true);
+  container.style.display='block';
+  container.style.background='#ffffff';
+  container.style.width='794px'; // A4 width in px at 96dpi
+  container.style.position='fixed';
+  container.style.top='-9999px';
+  container.style.left='0';
+
+  var filename=(d.type==='facture'?'Facture':'Devis')+'-'+d.numero.replace(/[^a-zA-Z0-9-]/g,'-')+'.pdf';
+
+  // Check if libraries are loaded
+  if(typeof html2canvas==='undefined'||typeof window.jspdf==='undefined'){
+    // Fallback to print if CDN not loaded
+    container.style.top='0';
+    container.style.position='fixed';
+    setTimeout(function(){window.print();setTimeout(function(){container.style.display='none';container.innerHTML='';},600);},200);
+    toast('Connexion internet requise pour le PDF direct. Utilisez Imprimer/PDF.',false);
+    return;
+  }
+
+  toast('Génération du PDF...');
+  
+  setTimeout(function(){
+    html2canvas(container,{
+      scale:2,
+      useCORS:true,
+      backgroundColor:'#ffffff',
+      width:794,
+      windowWidth:794
+    }).then(function(canvas){
+      var imgData=canvas.toDataURL('image/jpeg',0.95);
+      var jsPDF=window.jspdf.jsPDF;
+      var pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+      var pdfW=pdf.internal.pageSize.getWidth();
+      var pdfH=pdf.internal.pageSize.getHeight();
+      var imgH=(canvas.height*pdfW)/canvas.width;
+      
+      if(imgH<=pdfH){
+        pdf.addImage(imgData,'JPEG',0,0,pdfW,imgH);
+      }else{
+        // Multi-page
+        var y=0;
+        while(y<imgH){
+          if(y>0)pdf.addPage();
+          pdf.addImage(imgData,'JPEG',0,-y,pdfW,imgH);
+          y+=pdfH;
+        }
+      }
+      
+      pdf.save(filename);
+      container.style.display='none';
+      container.innerHTML='';
+      toast('PDF téléchargé ✓');
+    }).catch(function(err){
+      container.style.display='none';
+      container.innerHTML='';
+      toast('Erreur PDF: '+err.message,false);
+    });
+  },300);
 }
 
 // ═══ INIT ═══
